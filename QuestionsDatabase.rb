@@ -2,6 +2,7 @@ require 'singleton'
 require 'sqlite3'
 require_relative 'User'
 require_relative 'Question'
+require_relative 'Reply'
 
 class QuestionsDatabase < SQLite3::Database
   include Singleton
@@ -33,6 +34,24 @@ class Question_Like
       WHERE
         #{arg} = ?
       SQL
+  end
+
+  def self.avg_karma_for_user_id(user_id)
+    result = QuestionsDatabase.instance.execute(<<-SQL, user_id)
+      SELECT
+        CAST(COUNT(ul_id) AS FLOAT) / COUNT(DISTINCT(questions.id))
+      FROM
+        questions
+      LEFT OUTER JOIN
+        questions_likes
+      ON
+        questions.id = questions_likes.ql_id
+      WHERE
+        questions.assoc_author = ?
+    SQL
+
+    return nil if result.empty?
+    return result.first.values.first
   end
 
   def self.likers_for_question_id(question_id)
@@ -71,6 +90,32 @@ class Question_Like
 
     return nil if result.empty?
     result.map { |args| Question.new(args) }
+  end
+
+  def self.most_liked_questions(n)
+    result = QuestionsDatabase.instance.execute(<<-SQL, n)
+      SELECT
+        questions.*
+      FROM
+        questions
+      JOIN
+        questions_likes
+      ON
+        questions.id = questions_likes.ql_id
+      JOIN
+        users
+      ON
+        questions_likes.ul_id = users.id
+      GROUP BY
+        questions.id
+      ORDER BY
+        Count(*) DESC
+      LIMIT ?
+    SQL
+
+    return nil if result.empty?
+
+    result.map{|args| Question.new(args)}
   end
 
 end

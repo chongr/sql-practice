@@ -1,18 +1,27 @@
 require_relative 'QuestionsDatabase.rb'
+require_relative 'ModelBase'
 
-class Question
-  def self.find_by_id(id)
-    result = QuestionsDatabase.instance.execute(<<-SQL, id)
-      SELECT
-        *
-      FROM
-        questions
-      WHERE
-        id = ?
-    SQL
-    return nil if result.empty?
+class Question < ModelBase
+  def self.table_name
+    "questions"
+  end
 
-    Question.new(result.first)
+  # def self.find_by_id(id)
+  #   result = QuestionsDatabase.instance.execute(<<-SQL, id)
+  #     SELECT
+  #       *
+  #     FROM
+  #       questions
+  #     WHERE
+  #       id = ?
+  #   SQL
+  #   return nil if result.empty?
+  #
+  #   self.new(result.first)
+  # end
+
+  def self.most_liked(n)
+    Question_Like.most_liked_questions(n)
   end
 
   def self.find_by_author_id(author_id)
@@ -49,6 +58,25 @@ class Question
 
   def most_followed(n)
     Question_Follow.most_followed_questions(n)
+  end
+
+  def likers
+    Question_Like.likers_for_question_id(id)
+  end
+
+  def num_likes
+    Question_Like.num_likes_for_question_id(id)
+  end
+
+  def save
+    QuestionsDatabase.instance.execute(<<-SQL, @title, @body, @assoc_author)
+      INSERT INTO
+        questions ('title', 'body', 'assoc_author')
+      VALUES
+        (?, ?, ?)
+    SQL
+
+    @id = QuestionsDatabase.instance.last_insert_row_id
   end
 
 end

@@ -1,6 +1,9 @@
 require_relative 'QuestionsDatabase.rb'
 
-class Reply
+class Reply < ModelBase
+  def self.table_name
+    "replies"
+  end
 
   def self.find_by_user_id(user_id)
     result = QuestionsDatabase.instance.execute(<<-SQL, user_id)
@@ -31,19 +34,19 @@ class Reply
   end
 
 
-  def self.find_by_id(id)
-    result = QuestionsDatabase.instance.execute(<<-SQL, id)
-    SELECT
-    *
-    FROM
-    replies
-    WHERE
-    id = ?
-    SQL
-    return nil if result.empty?
-
-    Reply.new(result.first)
-  end
+  # def self.find_by_id(id)
+  #   result = QuestionsDatabase.instance.execute(<<-SQL, id)
+  #   SELECT
+  #   *
+  #   FROM
+  #   replies
+  #   WHERE
+  #   id = ?
+  #   SQL
+  #   return nil if result.empty?
+  #
+  #   Reply.new(result.first)
+  # end
 
   attr_accessor :id, :q_id, :parent_id, :u_id, :body
 
@@ -76,4 +79,16 @@ class Reply
     return nil if result.empty?
     result.map { |args| Reply.new(args) }
   end
+
+  def save
+    QuestionsDatabase.instance.execute(<<-SQL, @q_id, @parent_id, @u_id, @body)
+      INSERT INTO
+        replies ('q_id', 'parent_id', 'u_id', 'body')
+      VALUES
+        (?, ?, ?, ?)
+    SQL
+
+    @id = QuestionsDatabase.instance.last_insert_row_id
+  end
+
 end
